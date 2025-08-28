@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  fintech-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fintech-telegram-bot
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Telegram Bot Configuration
+      - BOT_TOKEN=${BOT_TOKEN}
+      
+      # Bot Settings
+      - BOT_USERNAME=${BOT_USERNAME}
+      - BOT_ADMIN_USER_IDS=${BOT_ADMIN_USER_IDS}
+      - MAIN_CONTENT_CREATOR_ID=${MAIN_CONTENT_CREATOR_ID}
+      
+      # N8N Integration
+      - BASE_N8N_WEBHOOK_URL=${BASE_N8N_WEBHOOK_URL}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-logs/bot.log}
+      
+      # Environment
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3000}
+      
+      # Database
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Cron Schedule
+      - POSTING_SCHEDULE=${POSTING_SCHEDULE:-"0 12 */2 * *"}
+      
+      # Supabase Configuration
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # Channels Configuration
+      - CHANNELS=${CHANNELS}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - fintech-network
+
+  # Опционально: Supabase для локальной разработки
+  # supabase:
+  #   image: supabase/postgres:15.1.0.117
+  #   container_name: fintech-supabase
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_PASSWORD=your_password
+  #     - POSTGRES_DB=fintech_bot
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - supabase_data:/var/lib/postgresql/data
+  #   networks:
+  #     - fintech-network
+
+networks:
+  fintech-network:
+    driver: bridge
+
+# volumes:
+#   supabase_data:
