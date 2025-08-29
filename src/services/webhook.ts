@@ -278,6 +278,7 @@ export function createWebhookServer(bot: BotInstance) {
         'POST /posts',
         'GET /bot/info',
         'POST /news-processed/:channelId',
+        'GET /news-process-error',
       ],
     });
   });
