@@ -26,7 +26,6 @@ import { MyContext, SessionData } from "../types/context.js";
 import { conversations, createConversation } from "@grammyjs/conversations";
 import { newsSelectionConversation } from "./conversations/news-selection.js";
 import { editTitleConversation, editTextConversation, editHashtagsConversation } from "./conversations/manual-edit.js";
-import { messageTrackerMiddleware } from "../services/message-tracker.js";
 import {
   regenerateTitleHandler,
   regenerateDescriptionHandler,
@@ -75,9 +74,6 @@ export function createBot(token: string, scheduler?: any) {
   bot.use(createConversation(editTitleConversation, "edit-title"));
   bot.use(createConversation(editTextConversation, "edit-text"));
   bot.use(createConversation(editHashtagsConversation, "edit-hashtags"));
-
-  // Добавляем middleware для отслеживания сообщений
-  bot.use(messageTrackerMiddleware());
 
   // Middleware для каналов
   bot.use(requireSelectedChannel());
