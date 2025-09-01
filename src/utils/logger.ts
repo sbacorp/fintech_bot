@@ -19,7 +19,7 @@ export const logger = pino({
           ]
         : [
             {
-              target: "pino/file",
+              target: "pino-pretty",
               level: config.LOG_LEVEL,
               options: {},
             },

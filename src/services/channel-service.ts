@@ -15,19 +15,6 @@ export class ChannelService {
   private loadChannels(): void {
     this.channels = config.CHANNELS || [];
 
-    // Добавляем канал по умолчанию для обратной совместимости
-    if (config.CHANNEL_ID && config.DEFAULT_N8N_TRIGGER_URL) {
-      const defaultChannel: Channel = {
-        id: 'default',
-        name: 'Основной канал',
-        description: 'Основной канал для публикации новостей',
-        channelId: config.CHANNEL_ID,
-        n8nTriggerUrl: config.DEFAULT_N8N_TRIGGER_URL,
-        n8nRegenerateUrl: config.DEFAULT_N8N_REGENERATE_URL,
-      };
-      this.channels.push(defaultChannel);
-    }
-
     logger.info({
       msg: 'Channels loaded',
       channelCount: this.channels.length,
@@ -39,6 +26,7 @@ export class ChannelService {
    * Получает все доступные каналы
    */
   getAllChannels(): Channel[] {
+    console.log(this.channels);
     return this.channels;
   }
 

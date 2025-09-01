@@ -123,7 +123,6 @@ export async function handleChannelSelection(ctx: MyContext) {
 
     await ctx.editMessageText(message, {
       parse_mode: "Markdown",
-      reply_markup: keyboard
     });
 
     await ctx.answerCallbackQuery(`✅ Выбран канал: ${channel.name}`);

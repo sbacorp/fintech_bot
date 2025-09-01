@@ -75,9 +75,6 @@ export function createBot(token: string, scheduler?: any) {
   bot.use(createConversation(editTextConversation, "edit-text"));
   bot.use(createConversation(editHashtagsConversation, "edit-hashtags"));
 
-  // Middleware для каналов
-  bot.use(requireSelectedChannel());
-  bot.use(logCurrentChannel());
 
   // API Middlewares
   bot.api.config.use(
@@ -106,6 +103,14 @@ export function createBot(token: string, scheduler?: any) {
     });
   }
 
+  // Channel selection callbacks
+  bot.callbackQuery(/^select_channel_(.+)$/, handleChannelSelection);
+
+  bot.command("select_channel", selectChannelCommand);
+
+    // Middleware для каналов
+    bot.use(requireSelectedChannel());
+    bot.use(logCurrentChannel());
 
 
   // Admin commands
@@ -113,7 +118,6 @@ export function createBot(token: string, scheduler?: any) {
   bot.command("view_posts", viewPostsCommand);
 
   // Channel management commands
-  bot.command("select_channel", selectChannelCommand);
 
   // Test commands
   bot.command("test_post", testPostCommand);
@@ -136,9 +140,6 @@ export function createBot(token: string, scheduler?: any) {
     await ctx.answerCallbackQuery();
     await ctx.conversation.enter("news-selection");
   });
-
-  // Channel selection callbacks
-  bot.callbackQuery(/^select_channel_(.+)$/, handleChannelSelection);
 
   bot.callbackQuery("regenerate_title", regenerateTitleHandler);
   bot.callbackQuery("regenerate_description", regenerateDescriptionHandler);
