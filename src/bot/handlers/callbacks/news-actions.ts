@@ -10,6 +10,7 @@ import {
 } from "../../../services/webhook.js";
 import { updatePostMessage } from "../../../utils/post-display.js";
 import { N8N_WEBHOOK_PATHES } from "../../../utils/n8n_pathes.js";
+import { ProcessedPost } from "../../conversations/news-selection.js";
 
 /**
  * Обработчик для кнопки "Перегенерировать заголовок"
@@ -314,7 +315,7 @@ async function updatePostMessageLocal(ctx: MyContext, processedPost: any) {
  */
 async function publishPostToChannel(
   ctx: MyContext,
-  processedPost: any
+  processedPost: ProcessedPost
 ): Promise<boolean> {
   try {
     // Получаем выбранный канал
@@ -337,11 +338,11 @@ async function publishPostToChannel(
       return false;
     }
 
-    const { trigger_title, post_text, hashtags, main_post_image } =
+    const { generated_title, generated_post_text, hashtags, main_post_image } =
       processedPost;
 
     // Формируем финальный текст поста
-    let finalPostText = `${trigger_title}\n\n${post_text}`;
+    let finalPostText = `${generated_title}\n\n${generated_post_text}`;
 
     if (hashtags && hashtags.length > 0) {
       finalPostText += `\n\n${hashtags.split(' ').join(" ")}`;
@@ -360,7 +361,7 @@ async function publishPostToChannel(
           msg: "Post published with image successfully",
           channelId,
           channelName: selectedChannel.name,
-          title: trigger_title,
+          title: generated_title,
           imageUrl: main_post_image,
         });
       } catch (photoError) {
@@ -368,7 +369,7 @@ async function publishPostToChannel(
           msg: "Failed to send post with image, trying without image",
           channelId,
           channelName: selectedChannel.name,
-          title: trigger_title,
+          title: generated_title,
           imageUrl: main_post_image,
           error:
             photoError instanceof Error
@@ -388,7 +389,7 @@ async function publishPostToChannel(
           msg: "Post published without image (fallback)",
           channelId,
           channelName: selectedChannel.name,
-          title: trigger_title,
+          title: generated_title,
         });
       }
     } else {
@@ -404,7 +405,7 @@ async function publishPostToChannel(
         msg: "Post published without image",
         channelId,
         channelName: selectedChannel.name,
-        title: trigger_title,
+        title: generated_title,
       });
     }
 
@@ -412,7 +413,7 @@ async function publishPostToChannel(
       msg: "Post published to channel successfully",
       channelId,
       channelName: selectedChannel.name,
-      title: trigger_title,
+      title: generated_title,
     });
 
     return true;
