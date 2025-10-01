@@ -1,7 +1,7 @@
 import { Context, SessionFlavor } from "grammy";
 import { Conversation, ConversationFlavor } from "@grammyjs/conversations";
-import { Channel } from "../config/index.js";
-// import { HydrateFlavor } from "@grammyjs/hydrate";
+import { Channel } from "../services/supabase-service.js";
+
 
 // Расширенный контекст с сессией
 export interface SessionData {

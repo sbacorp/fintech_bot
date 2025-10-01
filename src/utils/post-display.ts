@@ -1,5 +1,6 @@
 import { InlineKeyboard } from "grammy";
 import { Context } from "grammy";
+import { ProcessedPost } from "../bot/conversations/news-selection.js";
 
 /**
  * Интерфейс для поста
@@ -85,21 +86,21 @@ export function createPostKeyboard(options: PostDisplayOptions = {}): InlineKeyb
 /**
  * Формирует текст сообщения для поста
  */
-export function formatPostMessage(post: PostData, options: PostDisplayOptions = {}): string {
+export function formatPostMessage(post: ProcessedPost, options: PostDisplayOptions = {}): string {
   const { isUpdated = false } = options;
   
   let postMessage = `🎯 **Обработанная новость:**${isUpdated ? ' *(обновлено)*' : ''}\n\n`;
   postMessage += `📰 **Оригинальный заголовок:**\n${post.original_title}\n\n`;
-  postMessage += `⚡ **Предложенный заголовок:**\n${post.trigger_title}\n\n`;
-  postMessage += `📝 **Текст поста:**\n${post.post_text}\n\n`;
+  postMessage += `⚡ **Предложенный заголовок:**\n${post.generated_title}\n\n`;
+  postMessage += `📝 **Текст поста:**\n${post.generated_post_text}\n\n`;
   
   if (post.hashtags && post.hashtags.length > 0) {
-    postMessage += `🏷️ **Хештеги:** ${post.hashtags.join(', ')}\n\n`;
+    postMessage += `🏷️ **Хештеги:** ${post.hashtags.split(' ').join(', ')}\n\n`;
   }
   
-  if (post.urgency_reason) {
-    postMessage += `🔥 **Причина важности:**\n${post.urgency_reason}\n\n`;
-  }
+    if (post.original_link) {
+      postMessage += `🔥 **Ссылка на оригинальную новость:**\n${post.original_link}\n\n`;
+    }
 
   return postMessage;
 }
@@ -109,7 +110,7 @@ export function formatPostMessage(post: PostData, options: PostDisplayOptions = 
  */
 export async function displayPost(
   ctx: Context, 
-  post: PostData, 
+  post: ProcessedPost, 
   options: PostDisplayOptions = {}
 ): Promise<void> {
   const message = formatPostMessage(post, options);
@@ -126,7 +127,7 @@ export async function displayPost(
  */
 export async function updatePostMessage(
   ctx: Context, 
-  post: PostData, 
+  post: ProcessedPost, 
   options: PostDisplayOptions = {}
 ): Promise<void> {
   const message = formatPostMessage(post, { ...options, isUpdated: true });

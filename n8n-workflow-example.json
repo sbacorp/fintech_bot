@@ -1,0 +1,348 @@
+{
+  "name": "News URLs Processing with Firecrawl",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fintech85_search_posts",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "fintech85-search"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "channelId",
+              "value": "={{ $json.channelId }}"
+            },
+            {
+              "name": "channelName",
+              "value": "={{ $json.channelName }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "action",
+              "value": "={{ $json.action }}"
+            },
+            {
+              "name": "newsUrls",
+              "value": "={{ $json.newsUrls }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-initial-data",
+      "name": "Set Initial Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Подготавливаем данные для обработки каждого URL\nconst inputData = $input.all()[0].json;\n\n// Создаем массив объектов для обработки\nconst urlObjects = inputData.newsUrls.map((url, index) => ({\n  ...inputData,\n  currentUrl: url,\n  urlIndex: index,\n  totalUrls: inputData.newsUrls.length\n}));\n\nreturn urlObjects.map(item => ({ json: item }));"
+      },
+      "id": "prepare-urls",
+      "name": "Prepare URLs for Processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $vars.FIRECRAWL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.currentUrl }}"
+            },
+            {
+              "name": "formats",
+              "value": "[\"markdown\", \"html\"]"
+            },
+            {
+              "name": "onlyMainContent",
+              "value": "true"
+            },
+            {
+              "name": "includeTags",
+              "value": "[\"title\", \"meta\", \"links\", \"article\", \"h1\", \"h2\", \"h3\", \"p\"]"
+            },
+            {
+              "name": "excludeTags",
+              "value": "[\"nav\", \"footer\", \"ads\", \"sidebar\", \"script\", \"style\"]"
+            },
+            {
+              "name": "maxLength",
+              "value": "10000"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "firecrawl-api",
+      "name": "Firecrawl API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "wait-between-requests",
+      "name": "Wait Between Requests",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Обрабатываем результат от Firecrawl и добавляем метаданные\nconst firecrawlResult = $input.all()[0].json;\nconst originalData = $input.all()[0].json;\n\n// Извлекаем данные из ответа Firecrawl\nconst scrapedData = firecrawlResult.data || firecrawlResult;\n\n// Формируем структурированный результат\nconst processedResult = {\n  // Метаданные\n  channelId: originalData.channelId,\n  channelName: originalData.channelName,\n  userId: originalData.userId,\n  action: originalData.action,\n  \n  // Данные URL\n  sourceUrl: originalData.currentUrl,\n  urlIndex: originalData.urlIndex,\n  totalUrls: originalData.totalUrls,\n  processedAt: new Date().toISOString(),\n  \n  // Данные от Firecrawl\n  title: scrapedData.metadata?.title || scrapedData.title || 'No title',\n  description: scrapedData.metadata?.description || scrapedData.description || '',\n  content: scrapedData.markdown || scrapedData.content || '',\n  html: scrapedData.html || '',\n  \n  // Дополнительные метаданные\n  wordCount: scrapedData.markdown ? scrapedData.markdown.split(' ').length : 0,\n  links: scrapedData.links || [],\n  images: scrapedData.images || [],\n  \n  // Статус обработки\n  success: true,\n  error: null\n};\n\nreturn [{ json: processedResult }];"
+      },
+      "id": "process-firecrawl-result",
+      "name": "Process Firecrawl Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-all-results",
+      "name": "Merge All Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Финальная обработка и группировка результатов\nconst allResults = $input.all();\n\nif (allResults.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'No results to process',\n      timestamp: new Date().toISOString()\n    }\n  }];\n}\n\n// Берем первый элемент для метаданных\nconst firstResult = allResults[0].json;\n\n// Группируем результаты\nconst processedNews = allResults.map(item => item.json);\nconst successfulResults = processedNews.filter(item => item.success);\nconst failedResults = processedNews.filter(item => !item.success);\n\n// Создаем финальный ответ\nconst finalResult = {\n  // Метаданные запроса\n  channelId: firstResult.channelId,\n  channelName: firstResult.channelName,\n  userId: firstResult.userId,\n  action: firstResult.action,\n  \n  // Статистика обработки\n  totalUrls: firstResult.totalUrls,\n  processedUrls: processedNews.length,\n  successfulUrls: successfulResults.length,\n  failedUrls: failedResults.length,\n  \n  // Результаты\n  newsData: successfulResults.map(item => ({\n    title: item.title,\n    description: item.description,\n    content: item.content,\n    sourceUrl: item.sourceUrl,\n    wordCount: item.wordCount,\n    processedAt: item.processedAt,\n    links: item.links,\n    images: item.images\n  })),\n  \n  // Ошибки (если есть)\n  errors: failedResults.map(item => ({\n    url: item.sourceUrl,\n    error: item.error,\n    processedAt: item.processedAt\n  })),\n  \n  // Временные метки\n  startedAt: processedNews[0]?.processedAt,\n  completedAt: new Date().toISOString(),\n  \n  // Статус\n  success: successfulResults.length > 0\n};\n\nreturn [{ json: finalResult }];"
+      },
+      "id": "finalize-results",
+      "name": "Finalize Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.BOT_WEBHOOK_URL }}/webhook/news-processed",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-news-processor/1.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channelId",
+              "value": "={{ $json.channelId }}"
+            },
+            {
+              "name": "channelName",
+              "value": "={{ $json.channelName }}"
+            },
+            {
+              "name": "userId",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "processedUrls",
+              "value": "={{ $json.processedUrls }}"
+            },
+            {
+              "name": "successfulUrls",
+              "value": "={{ $json.successfulUrls }}"
+            },
+            {
+              "name": "newsData",
+              "value": "={{ $json.newsData }}"
+            },
+            {
+              "name": "errors",
+              "value": "={{ $json.errors }}"
+            },
+            {
+              "name": "success",
+              "value": "={{ $json.success }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "send-results-to-bot",
+      "name": "Send Results to Bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2220, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Initial Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Initial Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare URLs for Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare URLs for Processing": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl API Call": {
+      "main": [
+        [
+          {
+            "node": "Wait Between Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Between Requests": {
+      "main": [
+        [
+          {
+            "node": "Process Firecrawl Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Firecrawl Result": {
+      "main": [
+        [
+          {
+            "node": "Merge All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Results": {
+      "main": [
+        [
+          {
+            "node": "Finalize Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Results": {
+      "main": [
+        [
+          {
+            "node": "Send Results to Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Results to Bot": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}

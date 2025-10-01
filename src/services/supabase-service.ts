@@ -43,6 +43,21 @@ export interface PostStats {
   created_at: string;
 }
 
+export interface Channel {
+  id: string;
+  user_id: number;
+  name: string;
+  description?: string | undefined;
+  sources: string[];
+  channel_username?: string | undefined;
+  channel_id?: number | undefined;
+  is_admin_verified: boolean;
+  ai_prompt?: string | undefined;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export class SupabaseService {
   public client;
   private isEnabled: boolean;
@@ -863,6 +878,255 @@ export class SupabaseService {
         userId,
         error: error instanceof Error ? error.message : String(error)
       });
+    }
+  }
+
+  /**
+   * Сохраняет канал в базу данных
+   */
+  async saveChannel(channelData: Omit<Channel, 'id' | 'created_at' | 'updated_at'>): Promise<Channel | null> {
+    if (!this.isEnabled) {
+      logger.debug({
+        msg: 'Supabase disabled, cannot save channel',
+        channelName: channelData.name
+      });
+      return null;
+    }
+
+    try {
+      const { data, error } = await this.client!
+        .from('channels')
+        .insert({
+          user_id: channelData.user_id,
+          name: channelData.name,
+          description: channelData.description,
+          sources: channelData.sources,
+          channel_username: channelData.channel_username,
+          channel_id: channelData.channel_id,
+          is_admin_verified: channelData.is_admin_verified,
+          ai_prompt: channelData.ai_prompt,
+          is_active: channelData.is_active
+        })
+        .select()
+        .single();
+
+      if (error) {
+        logger.error({
+          msg: 'Failed to save channel',
+          channelName: channelData.name,
+          error: error.message
+        });
+        throw error;
+      }
+
+      logger.info({
+        msg: 'Channel saved successfully',
+        channelId: data.id,
+        channelName: channelData.name,
+        userId: channelData.user_id
+      });
+
+      return data;
+    } catch (error) {
+      logger.error({
+        msg: 'Error saving channel',
+        channelName: channelData.name,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Получает каналы пользователя
+   */
+  async getUserChannels(userId: number): Promise<Channel[]> {
+    if (!this.isEnabled) {
+      logger.debug({
+        msg: 'Supabase disabled, cannot get user channels',
+        userId
+      });
+      return [];
+    }
+
+    try {
+      const { data, error } = await this.client!
+        .from('channels')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        logger.error({
+          msg: 'Failed to get user channels',
+          userId,
+          error: error.message
+        });
+        throw error;
+      }
+
+      logger.debug({
+        msg: 'User channels retrieved',
+        userId,
+        channelsCount: data?.length || 0
+      });
+
+      return data || [];
+    } catch (error) {
+      logger.error({
+        msg: 'Error getting user channels',
+        userId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Получает канал по ID
+   */
+  async getChannelById(channelId: string): Promise<Channel | null> {
+    if (!this.isEnabled) {
+      logger.debug({
+        msg: 'Supabase disabled, cannot get channel by ID',
+        channelId
+      });
+      return null;
+    }
+
+    try {
+      const { data, error } = await this.client!
+        .from('channels')
+        .select('*')
+        .eq('id', channelId)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          logger.debug({
+            msg: 'Channel not found',
+            channelId
+          });
+          return null;
+        }
+        logger.error({
+          msg: 'Failed to get channel by ID',
+          channelId,
+          error: error.message
+        });
+        throw error;
+      }
+
+      logger.debug({
+        msg: 'Channel retrieved by ID',
+        channelId,
+        channelName: data.name
+      });
+
+      return data;
+    } catch (error) {
+      logger.error({
+        msg: 'Error getting channel by ID',
+        channelId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Обновляет канал
+   */
+  async updateChannel(channelId: string, updates: Partial<Omit<Channel, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<Channel | null> {
+    if (!this.isEnabled) {
+      logger.debug({
+        msg: 'Supabase disabled, cannot update channel',
+        channelId
+      });
+      return null;
+    }
+
+    try {
+      const { data, error } = await this.client!
+        .from('channels')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', channelId)
+        .select()
+        .single();
+
+      if (error) {
+        logger.error({
+          msg: 'Failed to update channel',
+          channelId,
+          error: error.message
+        });
+        throw error;
+      }
+
+      logger.info({
+        msg: 'Channel updated successfully',
+        channelId,
+        channelName: data.name
+      });
+
+      return data;
+    } catch (error) {
+      logger.error({
+        msg: 'Error updating channel',
+        channelId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Удаляет канал (помечает как неактивный)
+   */
+  async deleteChannel(channelId: string): Promise<boolean> {
+    if (!this.isEnabled) {
+      logger.debug({
+        msg: 'Supabase disabled, cannot delete channel',
+        channelId
+      });
+      return false;
+    }
+
+    try {
+      const { error } = await this.client!
+        .from('channels')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', channelId);
+
+      if (error) {
+        logger.error({
+          msg: 'Failed to delete channel',
+          channelId,
+          error: error.message
+        });
+        throw error;
+      }
+
+      logger.info({
+        msg: 'Channel deleted successfully',
+        channelId
+      });
+
+      return true;
+    } catch (error) {
+      logger.error({
+        msg: 'Error deleting channel',
+        channelId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
     }
   }
 }

@@ -3,7 +3,7 @@ import { BotInstance } from '../bot/index.js';
 import { NewsService } from './news-service.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
-import { channelService } from './channel-service.js';
+import { supabaseService, Channel } from './supabase-service.js';
 import axios from 'axios';
 
 
@@ -25,6 +25,45 @@ export class SchedulerService {
    */
   setBot(bot: BotInstance): void {
     this.bot = bot;
+  }
+
+  /**
+   * Получает все активные каналы из базы данных
+   */
+  private async getAllActiveChannels(): Promise<Channel[]> {
+    if (!supabaseService.isSupabaseEnabled()) {
+      logger.warn('Supabase not enabled, returning empty channels list');
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabaseService.client!
+        .from('channels')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        logger.error({
+          msg: 'Failed to get active channels for scheduler',
+          error: error.message
+        });
+        return [];
+      }
+
+      logger.debug({
+        msg: 'Active channels retrieved for scheduler',
+        channelsCount: data?.length || 0
+      });
+
+      return data || [];
+    } catch (error) {
+      logger.error({
+        msg: 'Error getting active channels for scheduler',
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
   }
 
   /**
@@ -76,12 +115,12 @@ export class SchedulerService {
     try {
       logger.info('executing daily news task');
 
-      // Получаем все доступные каналы
-      const channels = channelService.getAllChannels();
+      // Получаем все активные каналы из базы данных
+      const channels = await this.getAllActiveChannels();
       
       if (channels.length === 0) {
-        logger.warn('no channels configured for daily news task');
-        await this.notifyAdminsAboutError('Нет настроенных каналов для ежедневной рассылки');
+        logger.warn('no active channels found for daily news task');
+        await this.notifyAdminsAboutError('Нет активных каналов для ежедневной рассылки');
         return;
       }
 
@@ -96,33 +135,47 @@ export class SchedulerService {
             channelName: channel.name
           });
 
-          // Проверяем поддержку поиска для канала
-          if (!channelService.supportsSearch(channel)) {
+          // Проверяем, что у канала есть источники новостей
+          if (!channel.sources || channel.sources.length === 0) {
             logger.warn({
-              msg: 'channel does not support search, skipping',
+              msg: 'no news sources configured for channel, skipping',
               channelId: channel.id,
               channelName: channel.name
             });
             continue;
           }
 
-          // Получаем URL для поиска новостей
-          const searchUrl = channelService.getSearchUrl(channel);
+          // Используем URL для поиска новостей из конфигурации
+          const searchUrl = config.BASE_N8N_WEBHOOK_URL;
           if (!searchUrl) {
             logger.warn({
-              msg: 'no search URL configured for channel, skipping',
+              msg: 'no search URL configured in environment, skipping',
               channelId: channel.id,
               channelName: channel.name
             });
             continue;
           }
+
+          // Получаем список URLs для поиска новостей из канала
+          const newsUrls = channel.sources;
+          
+          logger.info({
+            msg: 'Using news URLs for daily search',
+            channelId: channel.id,
+            channelName: channel.name,
+            newsUrlsCount: newsUrls.length,
+            newsUrls: newsUrls
+          });
 
           // Отправляем запрос на поиск новостей через n8n flow (как в /get_posts)
           const searchResponse = await axios.post(searchUrl, {
-            channelId: channel.id,
+            channelId: channel.channel_id?.toString() || channel.id,
             channelName: channel.name,
-            userId: config.MAIN_CONTENT_CREATOR_ID, // Используем ID основного контент-мейкера
-            action: 'search_news'
+            channelDescription: channel.description,
+            userId: channel.user_id, // Используем ID владельца канала
+            action: 'search_news',
+            newsUrls: newsUrls,
+            aiPrompt: channel.ai_prompt
           }, {
             timeout: 30000,
             headers: {
@@ -355,15 +408,15 @@ export class SchedulerService {
   }> {
     logger.info('manually triggering news task');
     
-    // Получаем все доступные каналы
-    const channels = channelService.getAllChannels();
+    // Получаем все активные каналы из базы данных
+    const channels = await this.getAllActiveChannels();
     
     if (channels.length === 0) {
       return {
         success: false,
         totalNews: 0,
         totalMessages: 0,
-        error: 'Нет настроенных каналов'
+        error: 'Нет активных каналов'
       };
     }
 
@@ -380,21 +433,22 @@ export class SchedulerService {
           channelName: channel.name
         });
 
-        // Проверяем поддержку поиска для канала
-        if (!channelService.supportsSearch(channel)) {
+
+        // Проверяем, что у канала есть источники новостей
+        if (!channel.sources || channel.sources.length === 0) {
           logger.warn({
-            msg: 'channel does not support search, skipping',
+            msg: 'no news sources configured for channel, skipping',
             channelId: channel.id,
             channelName: channel.name
           });
           continue;
         }
 
-        // Получаем URL для поиска новостей
-        const searchUrl = channelService.getSearchUrl(channel);
+        // Используем URL для поиска новостей из конфигурации
+        const searchUrl = config.BASE_N8N_WEBHOOK_URL;
         if (!searchUrl) {
           logger.warn({
-            msg: 'no search URL configured for channel, skipping',
+            msg: 'no search URL configured in environment, skipping',
             channelId: channel.id,
             channelName: channel.name
           });
@@ -404,8 +458,15 @@ export class SchedulerService {
         // Создаем временный NewsService для конкретного канала
         const channelNewsService = new NewsService(searchUrl);
         
-        // Запускаем поиск новостей для канала
-        const result = await channelNewsService.fetchAndProcessNews();
+        // Запускаем поиск новостей для канала с данными из БД
+        const result = await channelNewsService.fetchAndProcessNewsForChannel({
+          channelId: channel.channel_id?.toString() || channel.id,
+          channelName: channel.name,
+          channelDescription: channel.description || undefined,
+          userId: channel.user_id,
+          newsUrls: channel.sources,
+          aiPrompt: channel.ai_prompt || undefined
+        });
 
         if (result.success) {
           totalNews += result.totalNews;

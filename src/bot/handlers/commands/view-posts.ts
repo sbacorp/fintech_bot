@@ -76,12 +76,10 @@ export async function viewPostsCommand(ctx: MyContext) {
       .row()
       .text("🔄 Получить новые новости", "retry_news_processing")
       .row()
-      .text("🗑️ Очистить новости", "clear_saved_news");
 
     infoMessage += "🎯 **Доступные действия:**\n";
     infoMessage += "• Выберите пост для обработки\n";
-    infoMessage += "• Получите новые новости\n";
-    infoMessage += "• Очистите сохраненные новости";
+    infoMessage += "• Получите новые новости";
 
     await ctx.reply(infoMessage, {
       parse_mode: "Markdown",

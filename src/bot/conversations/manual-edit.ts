@@ -30,7 +30,7 @@ export async function editTitleConversation(
     // Показываем текущий заголовок
     await ctx.reply(
       `✏️ **Редактирование заголовка**\n\n` +
-      `📰 **Текущий заголовок:**\n${processedPost.trigger_title || processedPost.original_title}\n\n` +
+      `📰 **Текущий заголовок:**\n${processedPost.generated_title || processedPost.original_title}\n\n` +
       `✍️ Напишите новый заголовок:`,
       { parse_mode: "Markdown" }
     );
@@ -45,7 +45,7 @@ export async function editTitleConversation(
     }
 
     // Обновляем заголовок
-    processedPost.trigger_title = newTitle;
+    processedPost.generated_title = newTitle;
     await setUserProcessedPost(userId, processedPost);
 
     logger.info({
@@ -91,7 +91,7 @@ export async function editTextConversation(
     // Показываем текущий текст
     await ctx.reply(
       `📝 **Редактирование текста поста**\n\n` +
-      `📄 **Текущий текст:**\n${processedPost.post_text}\n\n` +
+      `📄 **Текущий текст:**\n${processedPost.generated_post_text}\n\n` +
       `✍️ Напишите новый текст поста:`,
       { parse_mode: "Markdown" }
     );
@@ -106,7 +106,7 @@ export async function editTextConversation(
     }
 
     // Обновляем текст
-    processedPost.post_text = newText;
+    processedPost.generated_post_text = newText;
     await setUserProcessedPost(userId, processedPost);
 
     logger.info({
@@ -151,7 +151,7 @@ export async function editHashtagsConversation(
 
     // Показываем текущие хэштеги
     const currentHashtags = processedPost.hashtags && processedPost.hashtags.length > 0 
-      ? processedPost.hashtags.join(', ')
+      ? processedPost.hashtags.split(' ').join(', ')
       : 'нет хэштегов';
 
     await ctx.reply(
@@ -176,7 +176,7 @@ export async function editHashtagsConversation(
     const hashtags = parseHashtags(newHashtagsText);
 
     // Обновляем хэштеги
-    processedPost.hashtags = hashtags;
+    processedPost.hashtags = hashtags.join()
     await setUserProcessedPost(userId, processedPost);
 
     logger.info({

@@ -8,11 +8,6 @@ interface NewsMessage {
   newsCount: number;
 }
 
-interface NewsResponse {
-  data?: any;
-  success?: boolean;
-  error?: string;
-}
 
 export class NewsService {
   private webhookUrl: string;
@@ -401,6 +396,105 @@ export class NewsService {
       logger.error({
         msg: 'failed to fetch and process news',
         error: errorMessage,
+      });
+
+      return {
+        success: false,
+        messages: [],
+        totalNews: 0,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Метод для получения и обработки новостей для конкретного канала
+   */
+  async fetchAndProcessNewsForChannel(channelData: {
+    channelId: string;
+    channelName: string;
+    channelDescription?: string | undefined;
+    userId: number;
+    newsUrls: string[];
+    aiPrompt?: string | undefined;
+  }): Promise<{
+    success: boolean;
+    messages: NewsMessage[];
+    totalNews: number;
+    rawNews?: any[];
+    error?: string;
+  }> {
+    try {
+      // Отправляем запрос на поиск новостей с данными канала
+      const response = await axios.post(this.webhookUrl, {
+        channelId: channelData.channelId,
+        channelName: channelData.channelName,
+        channelDescription: channelData.channelDescription,
+        userId: channelData.userId,
+        action: 'search_news',
+        newsUrls: channelData.newsUrls,
+        aiPrompt: channelData.aiPrompt
+      }, {
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'FintechBot/1.0'
+        }
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const newsData = response.data;
+
+      if (!newsData || newsData.length === 0) {
+        logger.info('no news data received for channel', {
+          channelId: channelData.channelId,
+          channelName: channelData.channelName
+        });
+        return {
+          success: true,
+          messages: [],
+          totalNews: 0,
+        };
+      }
+
+      // Обрабатываем новости
+      const messages = this.processNews(newsData);
+
+      if (messages.length === 0) {
+        logger.info('no valid news found after processing for channel', {
+          channelId: channelData.channelId,
+          channelName: channelData.channelName
+        });
+        return {
+          success: true,
+          messages: [],
+          totalNews: 0,
+        };
+      }
+
+      logger.info('news processed successfully for channel', {
+        channelId: channelData.channelId,
+        channelName: channelData.channelName,
+        totalNews: newsData.length,
+        messagesCount: messages.length
+      });
+
+      return {
+        success: true,
+        messages,
+        totalNews: newsData.length,
+        rawNews: newsData,
+      };
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('error fetching news for channel', {
+        channelId: channelData.channelId,
+        channelName: channelData.channelName,
+        error: errorMessage
       });
 
       return {

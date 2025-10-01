@@ -1,9 +1,8 @@
 import { logger } from "../../../utils/logger.js";
-import { NewsService } from "../../../services/news-service.js";
 import { MyContext } from "../../../types/context.js";
-import { InlineKeyboard } from "grammy";
 import { channelService } from "../../../services/channel-service.js";
 import axios from "axios";
+import { N8N_WEBHOOK_PATHES } from "../../../utils/n8n_pathes.js";
 
 export async function getPostsCommand(ctx: MyContext) {
   const userId = ctx.from?.id;
@@ -27,18 +26,9 @@ export async function getPostsCommand(ctx: MyContext) {
       return;
     }
 
-    // Проверяем поддержку поиска новостей для канала
-    if (!channelService.supportsSearch(selectedChannel)) {
-      await ctx.reply(`❌ Канал **${selectedChannel.name}** не поддерживает поиск новостей.`);
-      return;
-    }
 
     // Получаем URL для поиска новостей n8n для выбранного канала
-    const n8nSearchUrl = channelService.getSearchUrl(selectedChannel);
-    if (!n8nSearchUrl) {
-      await ctx.reply(`❌ URL для поиска новостей не настроен для канала **${selectedChannel.name}**.`);
-      return;
-    }
+    const n8nSearchUrl = N8N_WEBHOOK_PATHES.SEARCH
 
     // Отправляем начальное сообщение
     const loadingMessage = await ctx.reply(
@@ -63,12 +53,26 @@ export async function getPostsCommand(ctx: MyContext) {
       searchUrl: n8nSearchUrl
     });
 
+    // Получаем список URLs для поиска новостей
+    const newsUrls = selectedChannel.sources;
+    
+    logger.info({
+      msg: 'Using news URLs for search',
+      channelId: selectedChannel.id,
+      channelName: selectedChannel.name,
+      newsUrlsCount: newsUrls.length,
+      newsUrls: newsUrls
+    });
+
     // Отправляем запрос на поиск новостей через n8n flow для выбранного канала
+    console.log(n8nSearchUrl);
+    
     const searchResponse = await axios.post(n8nSearchUrl, {
       channelId: selectedChannel.id,
       channelName: selectedChannel.name,
       userId: userId,
-      action: 'search_news'
+      action: 'search_news',
+      newsUrls: newsUrls
     }, {
       timeout: 30000, // 30 секунд таймаут
       headers: {

@@ -29,12 +29,16 @@ function getPrivateChatAdminCommands(): BotCommand[] {
       description: "Выбрать канал для работы",
     },
     {
-      command: "check_channel",
-      description: "Проверить настройки канала",
-    },
-    {
       command: "clear_state",
       description: "Очистить состояние бота",
+    },
+    {
+      command: "add_channel",
+      description: "Добавить канал",
+    },
+    {
+      command: "delete_channel",
+      description: "Удалить канал",
     },
     {
       command: "status",

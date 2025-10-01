@@ -1,6 +1,6 @@
-import { config, Channel } from '../config/index.js';
-import { logger } from '../utils/logger.js';
-import { N8N_WEBHOOK_PATHES_BY_ID } from '../utils/n8n_pathes.js';
+import { config, Channel } from "../config/index.js";
+import { logger } from "../utils/logger.js";
+import { N8N_WEBHOOK_PATHES_BY_ID } from "../utils/n8n_pathes.js";
 
 export class ChannelService {
   private channels: Channel[] = [];
@@ -16,9 +16,9 @@ export class ChannelService {
     this.channels = config.CHANNELS || [];
 
     logger.info({
-      msg: 'Channels loaded',
+      msg: "Channels loaded",
       channelCount: this.channels.length,
-      channels: this.channels.map(ch => ({ id: ch.id, name: ch.name }))
+      channels: this.channels.map((ch) => ({ id: ch.id, name: ch.name })),
     });
   }
 
@@ -26,7 +26,6 @@ export class ChannelService {
    * Получает все доступные каналы
    */
   getAllChannels(): Channel[] {
-    console.log(this.channels);
     return this.channels;
   }
 
@@ -34,70 +33,57 @@ export class ChannelService {
    * Получает канал по ID
    */
   getChannelById(channelId: string): Channel | undefined {
-    return this.channels.find(channel => channel.id === channelId);
+    return this.channels.find((channel) => channel.id === channelId);
   }
 
   /**
    * Получает канал по умолчанию
    */
   getDefaultChannel(): Channel | undefined {
-    return this.channels.find(channel => channel.id === 'default') || this.channels[0];
+    return (
+      this.channels.find((channel) => channel.id === "default") ||
+      this.channels[0]
+    );
   }
 
   /**
    * Проверяет, существует ли канал
    */
   channelExists(channelId: string): boolean {
-    return this.channels.some(channel => channel.id === channelId);
+    return this.channels.some((channel) => channel.id === channelId);
   }
 
   /**
    * Получает URL для поиска новостей n8n для конкретного канала
    */
   getSearchUrl(channel: Channel): string | undefined {
-    // Сначала проверяем новые URL'ы из N8N_WEBHOOK_PATHES_BY_ID
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    if (channelPaths?.search) {
-      return channelPaths.search;
-    }
-    
-    // Fallback на старые URL'ы из конфигурации
-    return channel.n8nTriggerUrl;
+    const channelPaths =
+      N8N_WEBHOOK_PATHES_BY_ID[
+        channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID
+      ];
+    return channelPaths?.search;
   }
 
   /**
    * Получает URL для создания новостей n8n для конкретного канала
    */
   getCreateUrl(channel: Channel): string | undefined {
-    // Сначала проверяем новые URL'ы из N8N_WEBHOOK_PATHES_BY_ID
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    if (channelPaths?.create) {
-      return channelPaths.create;
-    }
-    
-    // Fallback на старые URL'ы из конфигурации
-    return channel.n8nTriggerUrl;
-  }
-
-  /**
-   * Получает URL для триггера n8n для конкретного канала (для обратной совместимости)
-   */
-  getTriggerUrl(channel: Channel): string {
-    return this.getCreateUrl(channel) || channel.n8nTriggerUrl;
+    const channelPaths =
+      N8N_WEBHOOK_PATHES_BY_ID[
+        channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID
+      ];
+    return channelPaths?.create;
   }
 
   /**
    * Получает URL для регенерации n8n для конкретного канала
    */
   getRegenerateUrl(channel: Channel): string | undefined {
-    // Сначала проверяем новые URL'ы из N8N_WEBHOOK_PATHES_BY_ID
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    if (channelPaths?.regenerate_post) {
-      return channelPaths.regenerate_post;
-    }
-    
-    // Fallback на старые URL'ы из конфигурации
-    return channel.n8nRegenerateUrl;
+    const channelPaths =
+      N8N_WEBHOOK_PATHES_BY_ID[
+        channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID
+      ];
+    return channelPaths?.regenerate_post;
   }
 
   /**
@@ -108,37 +94,29 @@ export class ChannelService {
   }
 
   /**
-   * Получает токен webhook для канала
+   * Получает список URLs для поиска новостей для канала
    */
-  getWebhookToken(channel: Channel): string | undefined {
-    return channel.webhookToken;
+  getNewsUrls(channel: Channel): string[] {
+    // Сначала проверяем URLs канала
+    if (channel.newsUrls && channel.newsUrls.length > 0) {
+      return channel.newsUrls;
+    }
+
+    // Fallback на глобальные URLs по умолчанию
+    return [];
   }
 
   /**
-   * Проверяет, поддерживает ли канал поиск новостей
+   * Получает AI промпт для канала
    */
-  supportsSearch(channel: Channel): boolean {
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    return !!(channelPaths?.search);
-  }
-
-  /**
-   * Проверяет, поддерживает ли канал создание новостей
-   */
-  supportsCreate(channel: Channel): boolean {
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    return !!(channelPaths?.create);
-  }
-
-  /**
-   * Проверяет, поддерживает ли канал регенерацию постов
-   */
-  supportsRegenerate(channel: Channel): boolean {
-    const channelPaths = N8N_WEBHOOK_PATHES_BY_ID[channel.id as keyof typeof N8N_WEBHOOK_PATHES_BY_ID];
-    return !!(channelPaths?.regenerate_post);
+  getAiPrompt(channel: Channel): string {
+    // Сначала проверяем промпт канала
+    if (channel.aiPrompt && channel.aiPrompt.trim()) {
+      return channel.aiPrompt;
+    }
+    return "";
   }
 }
 
 // Создаем singleton экземпляр
 export const channelService = new ChannelService();
-

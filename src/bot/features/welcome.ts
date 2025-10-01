@@ -16,8 +16,8 @@ feature.command("start", async (ctx) => {
   
   await ctx.reply(
     `👋 Привет, ${userName}!\n\n` +
-    `🤖 FINTECH Bot\n\n` +
-    `Бот для управления финансовым каналом.`,
+    `🤖 Telegram News Bot\n\n` +
+    `Бот для генерации постов в Telegram каналы.`,
     { parse_mode: "HTML" }
   );
 });

@@ -3,12 +3,13 @@ import axios from "axios";
 import { logger } from "../../../utils/logger.js";
 import { MyContext } from "../../../types/context.js";
 import { channelService } from "../../../services/channel-service.js";
-import { 
-  getUserProcessedPost, 
-  setUserProcessedPost, 
-  clearUserProcessedPost 
+import {
+  getUserProcessedPost,
+  setUserProcessedPost,
+  clearUserProcessedPost,
 } from "../../../services/webhook.js";
 import { updatePostMessage } from "../../../utils/post-display.js";
+import { N8N_WEBHOOK_PATHES } from "../../../utils/n8n_pathes.js";
 
 /**
  * Обработчик для кнопки "Перегенерировать заголовок"
@@ -34,15 +35,19 @@ export async function regenerateTitleHandler(ctx: MyContext) {
       return;
     }
 
-    // Проверяем поддержку регенерации для канала
-    if (!channelService.supportsRegenerate(selectedChannel)) {
-      await ctx.answerCallbackQuery("❌ Канал не поддерживает регенерацию постов");
-      return;
-    }
+    // // Проверяем поддержку регенерации для канала
+    // if (!channelService.supportsRegenerate(selectedChannel)) {
+    //   await ctx.answerCallbackQuery(
+    //     "❌ Канал не поддерживает регенерацию постов"
+    //   );
+    //   return;
+    // }
 
-    const regenerateUrl = channelService.getRegenerateUrl(selectedChannel);
+    const regenerateUrl = N8N_WEBHOOK_PATHES.REGENERATE
     if (!regenerateUrl) {
-      await ctx.answerCallbackQuery("❌ URL для регенерации не настроен для этого канала");
+      await ctx.answerCallbackQuery(
+        "❌ URL для регенерации не настроен для этого канала"
+      );
       return;
     }
 
@@ -52,60 +57,56 @@ export async function regenerateTitleHandler(ctx: MyContext) {
     const response = await axios.post(
       regenerateUrl,
       {
-        action: 'regenerate_title',
-        link: processedPost.original_link || '#',
-        current_title: processedPost.trigger_title || processedPost.original_title,
-        current_text: processedPost.post_text,
+        action: "regenerate_title",
+        link: processedPost.original_link || "#",
+        current_title:
+          processedPost.generated_title || processedPost.original_title,
+        current_text: processedPost.generated_post_text,
         channelId: selectedChannel.id,
-        channelName: selectedChannel.name
+        channelName: selectedChannel.name,
       },
       {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" },
       }
     );
-    console.log(response.data, 'N8N Response');
-    
-    // Парсим ответ от N8N (format: {"output": "{\"new_title\": \"...\"}", "isValidJson": true})
+    console.log(response.data, 'Перегенерирую заголовок...' )
     let parsedData = null;
-    if (response.data && response.data.output) {
+    if (response.data) {
       try {
-        parsedData = JSON.parse(response.data.output);
-        console.log(parsedData, 'Parsed N8N Data');
+        parsedData = response.data
       } catch (error) {
-        console.error('Failed to parse N8N output:', error);
+        console.error("Failed to parse N8N output:", error);
       }
     }
-    
+
     if (parsedData && parsedData.new_title) {
       // Увеличиваем счетчик регенераций для заголовка
-      if (!processedPost._regeneration_count) {
-        processedPost._regeneration_count = { title: 0, text: 0 };
-      }
-      processedPost._regeneration_count.title++;
 
       // Обновляем заголовок в глобальном хранилище
-      processedPost.trigger_title = parsedData.new_title;
+      processedPost.generated_title = parsedData.new_title;
       await setUserProcessedPost(userId, processedPost);
-      
+
       // Обновляем сообщение с новым заголовком
       await updatePostMessageLocal(ctx, processedPost);
-      
+
       logger.info({
-        msg: 'Title regenerated successfully',
+        msg: "Title regenerated successfully",
         new_title: parsedData.new_title,
-        regeneration_count: processedPost._regeneration_count.title
       });
     } else {
-      await ctx.reply("❌ Не удалось перегенерировать заголовок");
+      await ctx.reply("❌ Не удалось перегенерировать заголовок", parsedData);
     }
-    
   } catch (error) {
     logger.error({
-      msg: 'Failed to regenerate title',
-      error: error instanceof Error ? error.message : String(error)
+      msg: "Failed to regenerate title",
+      error: error instanceof Error ? error.message : String(error),
     });
-    
-    await ctx.reply(`❌ Ошибка при перегенерации заголовка: ${error instanceof Error ? error.message : String(error)}`);
+
+    await ctx.reply(
+      `❌ Ошибка при перегенерации заголовка: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }
 
@@ -133,16 +134,12 @@ export async function regenerateDescriptionHandler(ctx: MyContext) {
       await ctx.answerCallbackQuery("❌ Не выбран канал для работы");
       return;
     }
+    const regenerateUrl = N8N_WEBHOOK_PATHES.REGENERATE
 
-    // Проверяем поддержку регенерации для канала
-    if (!channelService.supportsRegenerate(selectedChannel)) {
-      await ctx.answerCallbackQuery("❌ Канал не поддерживает регенерацию постов");
-      return;
-    }
-
-    const regenerateUrl = channelService.getRegenerateUrl(selectedChannel);
     if (!regenerateUrl) {
-      await ctx.answerCallbackQuery("❌ URL для регенерации не настроен для этого канала");
+      await ctx.answerCallbackQuery(
+        "❌ URL для регенерации не настроен для этого канала"
+      );
       return;
     }
 
@@ -152,61 +149,44 @@ export async function regenerateDescriptionHandler(ctx: MyContext) {
     const response = await axios.post(
       regenerateUrl,
       {
-        action: 'regenerate_text',
-        link: processedPost.original_link || '#',
-        current_title: processedPost.trigger_title || processedPost.original_title,
-        current_text: processedPost.post_text,
+        action: "regenerate_text",
+        link: processedPost.original_link || "#",
+        current_title:
+          processedPost.generated_title || processedPost.original_title,
+        current_text: processedPost.generated_post_text,
         channelId: selectedChannel.id,
-        channelName: selectedChannel.name
+        channelName: selectedChannel.name,
       },
       {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" },
       }
     );
+    const newData = response.data
 
-    console.log(response.data, 'N8N Response for text');
-    
-    // Парсим ответ от N8N (format: {"output": "{\"new_text\": \"...\"}", "isValidJson": true})
-    let parsedData = null;
-    if (response.data && response.data.output) {
-      try {
-        parsedData = JSON.parse(response.data.output);
-        console.log(parsedData, 'Parsed N8N Text Data');
-      } catch (error) {
-        console.error('Failed to parse N8N output for text:', error);
-      }
-    }
-
-    if (parsedData && parsedData.new_text) {
-      // Увеличиваем счетчик регенераций для текста
-      if (!processedPost._regeneration_count) {
-        processedPost._regeneration_count = { title: 0, text: 0 };
-      }
-      processedPost._regeneration_count.text++;
-
+    if (newData && newData.new_text) {
       // Обновляем описание в глобальном хранилище
-      processedPost.post_text = parsedData.new_text;
+      processedPost.generated_post_text = newData.new_text;
       setUserProcessedPost(userId, processedPost);
-      
+
       // Обновляем сообщение с новым описанием
       await updatePostMessageLocal(ctx, processedPost);
-      
+
       logger.info({
-        msg: 'Description regenerated successfully',
-        new_description: parsedData.new_text.substring(0, 100) + '...',
-        regeneration_count: processedPost._regeneration_count.text
+        msg: "Description regenerated successfully",
+        new_description: newData.new_text.substring(0, 100) + "...",
       });
     } else {
       await ctx.reply("❌ Не удалось перегенерировать описание");
     }
-    
   } catch (error) {
     logger.error({
-      msg: 'Failed to regenerate description',
-      error: error instanceof Error ? error.message : String(error)
+      msg: "Failed to regenerate description",
+      error: error instanceof Error ? error.message : String(error),
     });
-    
-    await ctx.reply(`❌ Ошибка при перегенерации описания: ${error instanceof Error ? error.message : String(error)}`);
+
+    await ctx.reply(
+      `❌ Ошибка при перегенерации описания: `
+    );
   }
 }
 
@@ -222,7 +202,7 @@ export async function publishPostHandler(ctx: MyContext) {
     }
 
     const processedPost = await getUserProcessedPost(userId);
-    
+
     if (!processedPost) {
       await ctx.answerCallbackQuery("❌ Нет данных для публикации");
       return;
@@ -236,39 +216,42 @@ export async function publishPostHandler(ctx: MyContext) {
     if (success) {
       await ctx.editMessageText(
         "✅ **Пост успешно опубликован!**\n\n" +
-        `📰 **Заголовок:** ${processedPost.trigger_title}\n` +
-        `📢 **Канал:** ${ctx.session.selectedChannel?.name}\n\n` +
-        "🎉 Новость отправлена в канал!",
+          `📰 **Заголовок:** ${processedPost.generated_title}\n` +
+          `📢 **Канал:** ${ctx.session.selectedChannel?.name}\n\n` +
+          "🎉 Новость отправлена в канал!",
         { parse_mode: "Markdown" }
       );
-      
+
       // Очищаем данные из глобального хранилища
       await clearUserProcessedPost(userId);
-      
+
       // Очищаем pendingNewsRequest после успешной публикации
       if (ctx.session.pendingNewsRequest) {
         delete ctx.session.pendingNewsRequest;
         logger.info({
-          msg: 'Cleared pendingNewsRequest after successful publication',
-          userId
+          msg: "Cleared pendingNewsRequest after successful publication",
+          userId,
         });
       }
-      
+
       logger.info({
-        msg: 'Post published successfully to channel',
-        title: processedPost.trigger_title,
+        msg: "Post published successfully to channel",
+        title: processedPost.generated_title,
       });
     } else {
       await ctx.reply("❌ Не удалось опубликовать пост в канал");
     }
-    
   } catch (error) {
     logger.error({
-      msg: 'Failed to publish post to channel',
-      error: error instanceof Error ? error.message : String(error)
+      msg: "Failed to publish post to channel",
+      error: error instanceof Error ? error.message : String(error),
     });
-    
-    await ctx.reply(`❌ Ошибка при публикации поста: ${error instanceof Error ? error.message : String(error)}`);
+
+    await ctx.reply(
+      `❌ Ошибка при публикации поста: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
   }
 }
 
@@ -282,41 +265,39 @@ export async function cancelPostHandler(ctx: MyContext) {
       await ctx.answerCallbackQuery("❌ Не удалось получить ID пользователя");
       return;
     }
-    
+
     // Получаем данные поста перед удалением для сбора статистики
     const processedPost = await getUserProcessedPost(userId);
-    
+
     if (processedPost) {
       logger.info({
-        msg: 'Post processing cancelled',
+        msg: "Post processing cancelled",
         userId: userId,
       });
     }
-    
+
     await ctx.answerCallbackQuery("❌ Пост отменен");
-    
+
     await ctx.editMessageText(
-      "❌ **Обработка поста отменена**\n\n" +
-      "Данные удалены из хранилища.",
+      "❌ **Обработка поста отменена**\n\n" + "Данные удалены из хранилища.",
       { parse_mode: "Markdown" }
     );
-    
+
     // Очищаем данные из глобального хранилища
     await clearUserProcessedPost(userId);
-    
+
     // Очищаем pendingNewsRequest после отмены
     if (ctx.session.pendingNewsRequest) {
       delete ctx.session.pendingNewsRequest;
       logger.info({
-        msg: 'Cleared pendingNewsRequest after cancellation',
-        userId
+        msg: "Cleared pendingNewsRequest after cancellation",
+        userId,
       });
     }
-    
   } catch (error) {
     logger.error({
-      msg: 'Failed to cancel post',
-      error: error instanceof Error ? error.message : String(error)
+      msg: "Failed to cancel post",
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -331,32 +312,39 @@ async function updatePostMessageLocal(ctx: MyContext, processedPost: any) {
 /**
  * Публикует пост в канал напрямую через бота
  */
-async function publishPostToChannel(ctx: MyContext, processedPost: any): Promise<boolean> {
+async function publishPostToChannel(
+  ctx: MyContext,
+  processedPost: any
+): Promise<boolean> {
   try {
     // Получаем выбранный канал
     const selectedChannel = ctx.session.selectedChannel;
     if (!selectedChannel) {
       logger.error({
-        msg: 'No channel selected for publishing',
-        userId: ctx.from?.id
+        msg: "No channel selected for publishing",
+        userId: ctx.from?.id,
       });
       return false;
     }
 
-    const channelId = channelService.getChannelId(selectedChannel);
+    const channelId = selectedChannel.channel_id
 
-    const {
-      trigger_title,
-      post_text,
-      hashtags,
-      main_post_image
-    } = processedPost;
+    if(!channelId) {
+      logger.error({
+        msg: "No channel ID selected for publishing",
+        userId: ctx.from?.id,
+      });
+      return false;
+    }
+
+    const { trigger_title, post_text, hashtags, main_post_image } =
+      processedPost;
 
     // Формируем финальный текст поста
     let finalPostText = `${trigger_title}\n\n${post_text}`;
-    
+
     if (hashtags && hashtags.length > 0) {
-      finalPostText += `\n\n${hashtags.join(' ')}`;
+      finalPostText += `\n\n${hashtags.join(" ")}`;
     }
 
     // Отправляем пост в канал
@@ -365,40 +353,42 @@ async function publishPostToChannel(ctx: MyContext, processedPost: any): Promise
         // Если есть изображение, отправляем как фото с подписью
         await ctx.api.sendPhoto(channelId, main_post_image, {
           caption: finalPostText,
-          parse_mode: "HTML"
+          parse_mode: "HTML",
         });
-        
+
         logger.info({
-          msg: 'Post published with image successfully',
-          channelId,
-          channelName: selectedChannel.name,
-          title: trigger_title,
-          imageUrl: main_post_image
-        });
-        
-      } catch (photoError) {
-        logger.warn({
-          msg: 'Failed to send post with image, trying without image',
+          msg: "Post published with image successfully",
           channelId,
           channelName: selectedChannel.name,
           title: trigger_title,
           imageUrl: main_post_image,
-          error: photoError instanceof Error ? photoError.message : String(photoError)
         });
-        
+      } catch (photoError) {
+        logger.warn({
+          msg: "Failed to send post with image, trying without image",
+          channelId,
+          channelName: selectedChannel.name,
+          title: trigger_title,
+          imageUrl: main_post_image,
+          error:
+            photoError instanceof Error
+              ? photoError.message
+              : String(photoError),
+        });
+
         // Fallback: отправляем без изображения
         await ctx.api.sendMessage(channelId, finalPostText, {
           parse_mode: "HTML",
           link_preview_options: {
-            is_disabled: false
-          }
+            is_disabled: false,
+          },
         });
-        
+
         logger.info({
-          msg: 'Post published without image (fallback)',
+          msg: "Post published without image (fallback)",
           channelId,
           channelName: selectedChannel.name,
-          title: trigger_title
+          title: trigger_title,
         });
       }
     } else {
@@ -406,31 +396,30 @@ async function publishPostToChannel(ctx: MyContext, processedPost: any): Promise
       await ctx.api.sendMessage(channelId, finalPostText, {
         parse_mode: "HTML",
         link_preview_options: {
-          is_disabled: false
-        }
+          is_disabled: false,
+        },
       });
-      
+
       logger.info({
-        msg: 'Post published without image',
+        msg: "Post published without image",
         channelId,
         channelName: selectedChannel.name,
-        title: trigger_title
+        title: trigger_title,
       });
     }
 
     logger.info({
-      msg: 'Post published to channel successfully',
+      msg: "Post published to channel successfully",
       channelId,
       channelName: selectedChannel.name,
-      title: trigger_title
+      title: trigger_title,
     });
 
     return true;
-
   } catch (error) {
     logger.error({
-      msg: 'Failed to publish post to channel',
-      error: error instanceof Error ? error.message : String(error)
+      msg: "Failed to publish post to channel",
+      error: error instanceof Error ? error.message : String(error),
     });
     return false;
   }
@@ -445,11 +434,13 @@ export async function editHashtagsHandler(ctx: MyContext) {
     await ctx.conversation.enter("edit-hashtags");
   } catch (error) {
     logger.error({
-      msg: 'Error in editHashtagsHandler',
+      msg: "Error in editHashtagsHandler",
       userId: ctx.from?.id,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
 
-    await ctx.answerCallbackQuery("❌ Произошла ошибка при редактировании хэштегов");
+    await ctx.answerCallbackQuery(
+      "❌ Произошла ошибка при редактировании хэштегов"
+    );
   }
 }

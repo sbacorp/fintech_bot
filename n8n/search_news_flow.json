@@ -1,0 +1,352 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "channelId",
+                "value": "={{ $json.body.channelId }}"
+              },
+              {
+                "name": "channelName",
+                "value": "={{ $json.body.channelName }}"
+              },
+              {
+                "name": "userId",
+                "value": "={{ $json.body.userId }}"
+              },
+              {
+                "name": "action",
+                "value": "={{ $json.body.action }}"
+              },
+              {
+                "name": "newsUrls",
+                "value": "={{ $json.body.newsUrls }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "1c51fc77-a66e-447b-9410-2e4b2f9d4c43",
+        "name": "Set Initial Data",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 1,
+        "position": [
+          -64,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Подготавливаем данные для обработки каждого URL\nconst inputData = $input.all()[0].json;\n\n// Создаем массив объектов для обработки\nconst urlObjects = inputData.newsUrls.map((url, index) => ({\n  ...inputData,\n  currentUrl: url,\n  urlIndex: index,\n  totalUrls: inputData.newsUrls.length\n}));\n\nreturn urlObjects.map(item => ({ json: item }));"
+        },
+        "id": "3601f513-b38d-4e0a-9353-198af94069c9",
+        "name": "Prepare URLs for Processing",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          160,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.firecrawl.dev/v2/scrape",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer fc-6f399adc9c354d7aa689253a1a4b6b8e"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"url\": \"{{ $json.currentUrl }}\",\n  \"onlyMainContent\": true,\n  \"maxAge\": 172800000,\n  \"parsers\": [],\n  \"formats\": [\n    {\n      \"type\": \"json\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"required\": [],\n        \"properties\": {\n          \"posts\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"required\": [],\n              \"properties\": {\n                \"title\": {\n                  \"type\": \"string\"\n                },\n                \"link\": {\n                  \"type\": \"string\"\n                },\n                \"summary\": {\n                  \"type\": \"string\"\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  ],\n  \"origin\": \"website\"\n}",
+          "options": {
+            "timeout": 80000
+          }
+        },
+        "id": "27a3cec7-2e98-45f7-96a0-b9ac682195f3",
+        "name": "Firecrawl API Call",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          384,
+          368
+        ]
+      },
+      {
+        "parameters": {
+          "amount": 2,
+          "unit": "seconds"
+        },
+        "id": "4c9b7685-b8c9-4f2f-8485-fab2d4183705",
+        "name": "Wait Between Requests",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1,
+        "position": [
+          736,
+          368
+        ],
+        "webhookId": "4619fdc2-7573-4044-988b-e1a5a84e00dc"
+      },
+      {
+        "parameters": {
+          "jsCode": "const firecrawlResult = $input.all().reduce((acc, item) => {\n  // Извлекаем posts из структуры data.json.posts\n  const posts = item.json.data?.json?.posts || [];\n  \n  // Берем только первые 5 постов из каждого источника\n  const limitedPosts = posts.slice(0, 5);\n  \n  // Добавляем посты в аккумулятор\n  limitedPosts.forEach(post => {\n    acc.push({\n      title: post.title,\n      url: post.link,\n      summary: post.summary,\n    });\n  });\n  \n  return acc;\n}, []);\n\nreturn [{\n  json: {\n    posts: firecrawlResult,\n  }\n}];"
+        },
+        "id": "d2c752ed-6382-4951-aef6-d38d264ae43d",
+        "name": "Process Firecrawl Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://04902e91b823.ngrok-free.app/news-processed",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "User-Agent",
+                "value": "n8n-news-processor/1.0"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "channelId",
+                "value": "={{ $json.channelId }}"
+              },
+              {
+                "name": "channelName",
+                "value": "={{ $json.channelName }}"
+              },
+              {
+                "name": "userId",
+                "value": "={{ $json.userId }}"
+              },
+              {
+                "name": "newsData",
+                "value": "={{ $json.news }}"
+              },
+              {
+                "name": "errors",
+                "value": "={{ $json.error }}"
+              },
+              {
+                "name": "success",
+                "value": "={{ $json.success }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000
+          }
+        },
+        "id": "6a83f338-456d-41b8-97ed-e0b54c35c148",
+        "name": "Send Results to Bot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          2192,
+          384
+        ]
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.posts }}",
+          "options": {
+            "systemMessage": "Ты - AI агент для извлечения и обработки новостей. \n\nЗАДАЧА: Извлеки 10 самых важных и актуальных новостей из предоставленных данных, обязательно из разных источников.\n\nТРЕБОВАНИЯ:\n1. Максимум 10 новостей\n2. Обязательно из разных источников (не дублируй)\n3. Приоритет: финансы, банки, финтех, криптовалюты, экономика\n4. Переведи заголовки и описания на русский язык\n5. Игнорируй рекламу и техническую информацию\n\nФОРМАТ ОТВЕТА (строго JSON):\n```json\n{\n  \"news\": [\n    {\n      \"title\": \"Переведенный заголовок на русском\",\n      \"summary\": \"Краткое описание на русском (1-2 предложения)\",\n      \"url\": \"оригинальная ссылка\",\n      \"category\": \"финансы|банки|финтех|криптовалюты|экономика\",\n      \"urgency\": \"высокая|средняя|низкая\",\n      \"publishedAt\": \"дата публикации\",\n      \"source\": \"название источника\"\n    }\n  ]\n}\n```\n\nПРАВИЛА:\n- urgency: \"высокая\" только для критически важных экономических новостей\n- category: выбирай наиболее подходящую\n- summary: до 150 символов, информативно\n- Обязательно из разных источников\n- Переводи на русский язык\n\n\nОтвечай ТОЛЬКО валидным JSON без дополнительного текста."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          1248,
+          416
+        ],
+        "id": "8c5fab36-b9fd-4b5b-9c81-d20fac695659",
+        "name": "AI Agent"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "claude-3-5-haiku-20241022",
+            "mode": "list",
+            "cachedResultName": "Claude Haiku 3.5"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1.3,
+        "position": [
+          1184,
+          624
+        ],
+        "id": "913a257f-f4d0-47ef-a996-180d6b93ccaf",
+        "name": "Anthropic Chat Model",
+        "credentials": {
+          "anthropicApi": {
+            "id": "pUtWDixOlGV8pXfD",
+            "name": "Anthropic account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "search_posts",
+          "options": {}
+        },
+        "id": "b0e576fd-d1a3-4629-b25f-ccdc872a110e",
+        "name": "news_trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -288,
+          368
+        ],
+        "webhookId": "fintech85-search"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Извлекаем JSON из ответа AI\nconst aiResponse = $input.all()[0].json;\n\n// Получаем строку с ответом\nconst responseText = aiResponse.output || aiResponse.response || '';\n\n// Извлекаем JSON из markdown блока\nlet newsData = null;\n\ntry {\n  // Ищем JSON между ```json и ```\n  const jsonMatch = responseText.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n  \n  if (jsonMatch && jsonMatch[1]) {\n    // Парсим извлеченный JSON\n    newsData = JSON.parse(jsonMatch[1].trim());\n  } else {\n    // Если нет markdown блоков, пытаемся парсить всю строку\n    newsData = JSON.parse(responseText.trim());\n  }\n} catch (error) {\n  // Если не удалось распарсить, создаем пустой результат\n  newsData = {\n    news: [],\n    error: 'Failed to parse AI response'\n  };\n}\n\n// Возвращаем чистый JSON объект\nreturn [{\n  json: {\n    channelId: $('Set Initial Data').first().json.channelId,\n    channelName: $('Set Initial Data').first().json.channelName,\n    userId: $('Set Initial Data').first().json.userId,\n    news: newsData.news || [],\n    success: !!(newsData.news && newsData.news.length > 0),\n    error: newsData.error || null\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1600,
+          416
+        ],
+        "id": "72363c40-cb0f-48c6-94f0-0662e6081ad6",
+        "name": "Code in JavaScript"
+      }
+    ],
+    "connections": {
+      "Set Initial Data": {
+        "main": [
+          [
+            {
+              "node": "Prepare URLs for Processing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare URLs for Processing": {
+        "main": [
+          [
+            {
+              "node": "Firecrawl API Call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Firecrawl API Call": {
+        "main": [
+          [
+            {
+              "node": "Wait Between Requests",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait Between Requests": {
+        "main": [
+          [
+            {
+              "node": "Process Firecrawl Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Process Firecrawl Result": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Results to Bot": {
+        "main": [
+          []
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Anthropic Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "news_trigger": {
+        "main": [
+          [
+            {
+              "node": "Set Initial Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Send Results to Bot",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {},
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "97acf8e4f55e11621345f7b15c5a9f11808ed86d808d6e20cec662dfed7e8299"
+    }
+  }

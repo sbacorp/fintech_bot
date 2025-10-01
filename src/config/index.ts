@@ -10,6 +10,8 @@ const channelSchema = z.object({
   n8nTriggerUrl: z.string(),
   n8nRegenerateUrl: z.string().optional(),
   webhookToken: z.string().optional(),
+  newsUrls: z.array(z.string().url()).optional(),
+  aiPrompt: z.string().optional().default("Создай яркий и провокационный пост для IT и финансовой аудитории. Используй триггерные заголовки которые вызывают эмоции и интерес. Стиль должен быть агрессивным но информативным. ПРАВИЛА Заголовок провокационный с элементами драмы пример ЦБ запретил PayPal что делать бизнесу. Текст до 500 символов яркий и цепляющий. Включи анализ ситуации и практические советы. Добавь релевантные хештеги #финтех #платежи #крипта #банки #IT. Используй эмодзи для привлечения внимания. Обязательно включи ссылку на источник. Создай ощущение срочности и важности. СТИЛЬ Агрессивный провокационный но с пользой. Должен заставить читателя поделиться постом"),
 });
 
 const configSchema = z.object({
@@ -25,7 +27,7 @@ const configSchema = z.object({
     .transform((val) => {
       if (!val) return [];
       if (Array.isArray(val)) return val;
-      if (val === '[]' || val === '') return [];
+      if (val === "[]" || val === "") return [];
       try {
         return JSON.parse(val);
       } catch {
