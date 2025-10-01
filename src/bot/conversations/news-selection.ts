@@ -6,6 +6,7 @@ import { channelService } from "../../services/channel-service.js";
 import { MyConversation } from "../../types/context.js";
 import { getUserNews, setUserProcessedPost } from "../../services/webhook.js";
 import { displayPost } from "../../utils/post-display.js";
+import { N8N_WEBHOOK_PATHES } from "../../utils/n8n_pathes.js";
 
 export interface ProcessedPost {
   main_post_image: string;
@@ -260,19 +261,7 @@ async function processNewsWithN8n(
       return null;
     }
 
-    // Проверяем поддержку создания новостей для канала
-    // if (!channelService.supportsCreate(channel)) {
-    //   logger.error({
-    //     msg: "Channel does not support news creation",
-    //     channelId: channel.id,
-    //     channelName: channel.name,
-    //     postTitle: post.title,
-    //   });
-    //   return null;
-    // }
-
-    // Получаем URL для создания новостей
-    const createUrl = channelService.getCreateUrl(channel);
+    const createUrl = N8N_WEBHOOK_PATHES.CREATE
     if (!createUrl) {
       logger.error({
         msg: "Create URL not configured for channel",
