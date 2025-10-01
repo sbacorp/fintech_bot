@@ -344,7 +344,7 @@ async function publishPostToChannel(
     let finalPostText = `${trigger_title}\n\n${post_text}`;
 
     if (hashtags && hashtags.length > 0) {
-      finalPostText += `\n\n${hashtags.join(" ")}`;
+      finalPostText += `\n\n${hashtags.split(' ').join(" ")}`;
     }
 
     // Отправляем пост в канал
