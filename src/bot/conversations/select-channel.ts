@@ -53,7 +53,6 @@ export async function selectChannelConversation(
 
     // Ждем выбора канала
     const { callbackQuery } = await conversation.waitFor("callback_query");
-    await ctx.answerCallbackQuery();
 
     const selectedChannelId = callbackQuery.data;
     if (!selectedChannelId || !selectedChannelId.startsWith("select_channel_")) {
@@ -183,13 +182,6 @@ async function displaySelectedChannel(ctx: Context, channel: Channel): Promise<v
   channelInfo += "🎉 Теперь вы можете работать с этим каналом!";
 
   const keyboard = new InlineKeyboard()
-    .text("📰 Получить новости", "get_news")
-    .text("📋 Мои посты", "my_posts")
-    .row()
-    .text("⚙️ Настройки канала", "channel_settings")
-    .row()
-    .text("🔄 Выбрать другой канал", "select_another_channel")
-    .row()
     .text("🏠 Главное меню", "main_menu");
 
   await ctx.reply(channelInfo, { 
