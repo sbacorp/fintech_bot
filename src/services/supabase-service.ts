@@ -50,7 +50,7 @@ export interface Channel {
   description?: string | undefined;
   sources: string[];
   channel_username?: string | undefined;
-  channel_id?: number | undefined;
+  channel_id?: number | string | undefined;
   is_admin_verified: boolean;
   ai_prompt?: string | undefined;
   is_active: boolean;

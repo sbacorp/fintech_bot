@@ -311,7 +311,7 @@ async function getChannelUsername(
 async function getChannelId(
   conversation: MyConversation,
   ctx: Context
-): Promise<number | null> {
+): Promise<string | null> {
   const maxRetries = 3;
   let attempts = 0;
 
@@ -327,11 +327,7 @@ async function getChannelId(
 
       const { message } = await conversation.waitFor("message:text");
       const channelIdText = message.text.trim();
-      const channelId = parseInt(channelIdText, 10);
-
-      if (!isNaN(channelId) && channelId < 0 && channelIdText.length >= 10) {
-        return channelId;
-      }
+      const channelId = channelIdText;
 
       attempts++;
       if (attempts < maxRetries) {
