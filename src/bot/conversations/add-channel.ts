@@ -330,15 +330,6 @@ async function getChannelId(
       const channelId = channelIdText;
 
       return channelId;
-
-      attempts++;
-      if (attempts < maxRetries) {
-        await ctx.reply(
-          `❌ ID канала должен быть отрицательным числом (минимум 10 цифр).\n` +
-            `Попытка ${attempts + 1} из ${maxRetries}:\n\n` +
-            `🆔 Введите ID канала:`
-        );
-      }
     } catch (error) {
       if (error instanceof Error && error.message.includes("conversation")) {
         return null; // Пользователь отменил
