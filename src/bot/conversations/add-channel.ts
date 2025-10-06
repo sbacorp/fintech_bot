@@ -329,6 +329,8 @@ async function getChannelId(
       const channelIdText = message.text.trim();
       const channelId = channelIdText;
 
+      return channelId;
+
       attempts++;
       if (attempts < maxRetries) {
         await ctx.reply(
