@@ -344,10 +344,6 @@ async function publishPostToChannel(
     // Формируем финальный текст поста
     let finalPostText = `${generated_title}\n\n${generated_post_text}`;
 
-    if (hashtags && hashtags.length > 0) {
-      finalPostText += `\n\n${hashtags.split(' ').join(" ")}`;
-    }
-
     // Отправляем пост в канал
     if (main_post_image) {
       try {
@@ -397,7 +393,7 @@ async function publishPostToChannel(
       await ctx.api.sendMessage(channelId, finalPostText, {
         parse_mode: "HTML",
         link_preview_options: {
-          is_disabled: false,
+          is_disabled: true,
         },
       });
 
