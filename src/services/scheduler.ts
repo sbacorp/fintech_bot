@@ -278,13 +278,13 @@ export class SchedulerService {
 
     // Добавляем информацию о каналах
     if (result.results && result.results.length > 0) {
-      message += `\n\n📊 **Запущенные каналы:**\n`;
+      message += `\n\n📊 Запущенные каналы:\n`;
       
       for (const channelResult of result.results) {
         if (channelResult.success) {
-          message += `✅ **${channelResult.channelName}**: поиск запущен\n`;
+          message += `✅ ${channelResult.channelName}: поиск запущен\n`;
         } else {
-          message += `❌ **${channelResult.channelName}**: ${channelResult.error || 'Ошибка'}\n`;
+          message += `❌ ${channelResult.channelName}: ${channelResult.error || 'Ошибка'}\n`;
         }
       }
     }

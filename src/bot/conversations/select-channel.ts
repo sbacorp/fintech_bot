@@ -50,37 +50,7 @@ export async function selectChannelConversation(
         reply_markup: channelsKeyboard
       }
     );
-
-    // Ждем выбора канала
-    const { callbackQuery } = await conversation.waitFor("callback_query");
-
-    const selectedChannelId = callbackQuery.data;
-    if (!selectedChannelId || !selectedChannelId.startsWith("select_channel_")) {
-      await ctx.reply("❌ Неверный выбор канала");
-      return;
-    }
-
-    const channelId = selectedChannelId.replace("select_channel_", "");
-    const selectedChannel = userChannels.find(ch => ch.id === channelId);
-
-    if (!selectedChannel) {
-      await ctx.reply("❌ Канал не найден");
-      return;
-    }
-
-    // Сохраняем выбранный канал в сессию
-    const session = await conversation.external((ctx) => ctx.session);
-    session.selectedChannel = selectedChannel;
-
-    // Показываем информацию о выбранном канале
-    await displaySelectedChannel(ctx, selectedChannel);
-
-    logger.info({
-      msg: 'Channel selected',
-      userId,
-      channelId: selectedChannel.id,
-      channelName: selectedChannel.name
-    });
+    return;
 
   } catch (error) {
     logger.error({
