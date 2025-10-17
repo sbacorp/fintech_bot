@@ -243,7 +243,7 @@ async function processNewsWithN8n(
   userId?: number,
   retryCount: number = 0
 ) {
-  const maxRetries = 2; // Максимум 2 повторные попытки
+  const maxRetries = 0; // Максимум 2 повторные попытки
 
   try {
     // Получаем выбранный канал из контекста или используем переданный
