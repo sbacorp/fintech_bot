@@ -302,7 +302,7 @@ async function processNewsWithN8n(
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 60000, // 60 секунд таймаут
+      timeout: 120000, // 120 секунд таймаут
     });
 
     logger.info({
