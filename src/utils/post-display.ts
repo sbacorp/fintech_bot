@@ -89,17 +89,18 @@ export function createPostKeyboard(options: PostDisplayOptions = {}): InlineKeyb
 export function formatPostMessage(post: ProcessedPost, options: PostDisplayOptions = {}): string {
   const { isUpdated = false } = options;
   
-  let postMessage = `🎯 **Обработанная новость:**${isUpdated ? ' *(обновлено)*' : ''}\n\n`;
-  postMessage += `📰 **Оригинальный заголовок:**\n${post.original_title}\n\n`;
-  postMessage += `⚡ **Предложенный заголовок:**\n${post.generated_title}\n\n`;
-  postMessage += `📝 **Текст поста:**\n${post.generated_post_text}\n\n`;
+  let postMessage = `🎯 Обработанная новость:${isUpdated ? ' *(обновлено)*' : ''}\n\n`;
+  postMessage += `📰 Оригинальный заголовок:\n${post.original_title}\n\n`;
+  postMessage += `⚡ Предложенный заголовок:\n${post.generated_title}\n\n`;
+  postMessage += `📝 Текст поста:\n${post.generated_post_text}\n\n`;
   
   if (post.hashtags && post.hashtags.length > 0) {
-    postMessage += `🏷️ **Хештеги:** ${post.hashtags.split(' ').slice(0, 3).join(' ')}\n\n`;
+    console.log(post.hashtags, 'hashtags')
+    postMessage += `🏷️ Хештеги: ${post.hashtags.split(' ').slice(0, 3).join(' ')}\n\n`;
   }
   
     if (post.original_link) {
-      postMessage += `🔥 **Ссылка на оригинальную новость:**\n${post.original_link}\n\n`;
+      postMessage += `🔥 Ссылка на оригинальную новость:\n${post.original_link}\n\n`;
     }
 
   return postMessage;
@@ -117,7 +118,7 @@ export async function displayPost(
   const keyboard = createPostKeyboard(options);
 
   await ctx.reply(message, {
-    parse_mode: "Markdown",
+    parse_mode: "HTML",
     reply_markup: keyboard
   });
 }
@@ -135,13 +136,13 @@ export async function updatePostMessage(
 
   try {
     await ctx.editMessageText(message, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: keyboard
     });
   } catch (error) {
     // Если не удалось отредактировать, отправляем новое сообщение
     await ctx.reply(message, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: keyboard
     });
   }

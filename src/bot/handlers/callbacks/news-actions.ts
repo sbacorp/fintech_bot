@@ -341,8 +341,11 @@ async function publishPostToChannel(
     const { generated_title, generated_post_text, hashtags, main_post_image } =
       processedPost;
 
+    console.log(hashtags)
+
     // Формируем финальный текст поста
-    let finalPostText = `${generated_title}\n\n${generated_post_text}\n ${hashtags}`;
+    let finalPostText = `${generated_title}\n\n${generated_post_text}\n${hashtags}`;
+    console.log(finalPostText)
 
     // Отправляем пост в канал
     if (main_post_image) {
@@ -350,7 +353,7 @@ async function publishPostToChannel(
         // Если есть изображение, отправляем как фото с подписью
         await ctx.api.sendPhoto(channelId, main_post_image, {
           caption: finalPostText,
-          parse_mode: "HTML",
+          parse_mode: "Markdown",
         });
 
         logger.info({
