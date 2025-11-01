@@ -134,7 +134,6 @@ export async function newsSelectionConversation(
       return;
     }
 
-    // Сохраняем обработанный пост в глобальном хранилище
     await setUserProcessedPost(userId, processedPost);
 
     // Очищаем pendingNewsRequest после успешной обработки

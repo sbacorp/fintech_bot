@@ -342,7 +342,7 @@ async function publishPostToChannel(
       processedPost;
 
     // Формируем финальный текст поста
-    let finalPostText = `${generated_title}\n\n${generated_post_text}`;
+    let finalPostText = `${generated_title}\n\n${generated_post_text}\n ${hashtags}`;
 
     // Отправляем пост в канал
     if (main_post_image) {

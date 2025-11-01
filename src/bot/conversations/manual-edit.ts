@@ -151,7 +151,7 @@ export async function editHashtagsConversation(
 
     // Показываем текущие хэштеги
     const currentHashtags = processedPost.hashtags && processedPost.hashtags.length > 0 
-      ? processedPost.hashtags.split(' ').join(', ')
+      ? processedPost.hashtags
       : 'нет хэштегов';
 
     await ctx.reply(

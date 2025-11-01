@@ -95,7 +95,7 @@ export function formatPostMessage(post: ProcessedPost, options: PostDisplayOptio
   postMessage += `📝 **Текст поста:**\n${post.generated_post_text}\n\n`;
   
   if (post.hashtags && post.hashtags.length > 0) {
-    postMessage += `🏷️ **Хештеги:** ${post.hashtags.split(' ').join(', ')}\n\n`;
+    postMessage += `🏷️ **Хештеги:** ${post.hashtags.split(' ').slice(0, 3).join(' ')}\n\n`;
   }
   
     if (post.original_link) {

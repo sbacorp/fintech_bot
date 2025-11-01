@@ -63,9 +63,6 @@ export async function getPostsCommand(ctx: MyContext) {
       newsUrlsCount: newsUrls.length,
       newsUrls: newsUrls
     });
-
-    // Отправляем запрос на поиск новостей через n8n flow для выбранного канала
-    console.log(n8nSearchUrl);
     
     const searchResponse = await axios.post(n8nSearchUrl, {
       channelId: selectedChannel.id,
